@@ -1,12 +1,7 @@
-
-
-
-
 ///// FIXME: Use path._rings instead of path._latlngs???
 ///// FIXME: Panic if this._map doesn't exist when called.
 ///// FIXME: Implement snakeOut()
 ///// FIXME: Implement layerGroup.snakeIn() / Out()
-
 
 L.Polyline.include({
 
@@ -44,7 +39,7 @@ L.Polyline.include({
 		this._snakingVertices = this._snakingRings = this._snakingDistance = 0;
 
 		if (!this._snakeLatLngs) {
-			this._snakeLatLngs = L.LineUtil.isFlat(this._latlngs) ?
+			this._snakeLatLngs = L.LineUtil.isFlat(this._latlngs) ? // replace deprecated L.Polyline.isFlat for L.LineUtil.isFlat
 				[ this._latlngs ] :
 				this._latlngs ;
 		}
@@ -75,8 +70,6 @@ L.Polyline.include({
 
 	_snakeForward: function(forward) {
 
-		// If polyline has been removed from the map stop _snakeForward
-		if (!this._map) return;
 		// Calculate distance from current vertex to next vertex
 		var currPoint = this._map.latLngToContainerPoint(
 			this._snakeLatLngs[ this._snakingRings ][ this._snakingVertices ]);
@@ -141,16 +134,12 @@ L.Polyline.mergeOptions({
 	snakingSpeed: 200	// In pixels/sec
 });
 
-
-
-
-
 L.LayerGroup.include({
 
 	_snakingLayers: [],
 	_snakingLayersDone: 0,
 
-	snakeIn: function() {
+	snakeIn: function(options={}) {
 
 		if ( !('performance' in window) ||
 		     !('now' in window.performance) ||
@@ -159,10 +148,18 @@ L.LayerGroup.include({
 			return;
 		}
 
-
 		this._snaking = true;
 		this._snakingLayers = [];
 		this._snakingLayersDone = 0;
+		console.log("snakeIn options: ", options)
+		if('openLatLngTooltip' in options) {
+			this._openLatLngTooltip = options.openLatLngTooltip;
+		}
+
+		if('openLatLngPopup' in options) {
+			this._openLatLngPopup = options.openLatLngPopup;
+		}
+
 		var keys = Object.keys(this._layers);
 		for (var i in keys) {
 			var key = keys[i];
@@ -174,10 +171,7 @@ L.LayerGroup.include({
 		return this._snakeNext();
 	},
 
-
 	_snakeNext: function() {
-
-
 		if (this._snakingLayersDone >= this._snakingLayers.length) {
 			this.fire('snakeend');
 			this._snaking = false;
@@ -187,8 +181,16 @@ L.LayerGroup.include({
 		var currentLayer = this._snakingLayers[this._snakingLayersDone];
 
 		this._snakingLayersDone++;
-
 		this.addLayer(currentLayer);
+
+		if(this._openLatLngTooltip) {
+			currentLayer.openTooltip();
+		}
+
+		if(this._openLatLngPopup) {
+			currentLayer.openPopup();
+		}
+
 		if ('snakeIn' in currentLayer) {
 			currentLayer.once('snakeend', function(){
 				setTimeout(this._snakeNext.bind(this), this.options.snakingPause);
@@ -197,7 +199,6 @@ L.LayerGroup.include({
 		} else {
 			setTimeout(this._snakeNext.bind(this), this.options.snakingPause);
 		}
-
 
 		this.fire('snake');
 		return this;
@@ -209,10 +210,3 @@ L.LayerGroup.include({
 L.LayerGroup.mergeOptions({
 	snakingPause: 200
 });
-
-
-
-
-
-
-
