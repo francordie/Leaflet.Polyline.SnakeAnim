@@ -148,6 +148,7 @@ L.LayerGroup.include({
 			return;
 		}
 
+		this._options = options
 		this._snaking = true;
 		this._snakingLayers = [];
 		this._snakingLayersDone = 0;
@@ -158,6 +159,10 @@ L.LayerGroup.include({
 
 		if('openLatLngPopup' in options) {
 			this._openLatLngPopup = options.openLatLngPopup;
+		}
+
+		if('followCheckpoints' in options) {
+			this._followCheckpoints = options.followCheckpoints;
 		}
 
 		var keys = Object.keys(this._layers);
@@ -175,22 +180,36 @@ L.LayerGroup.include({
 		if (this._snakingLayersDone >= this._snakingLayers.length) {
 			this.fire('snakeend');
 			this._snaking = false;
+			if('currentTagElement' in this._options) {
+				this._options.currentTagElement.dataset['layer_id'] = this._leaflet_id
+			}
 			return;
 		}
 
 		var currentLayer = this._snakingLayers[this._snakingLayersDone];
-
 		this._snakingLayersDone++;
 		this.addLayer(currentLayer);
 
-		if(this._openLatLngTooltip) {
-			currentLayer.openTooltip();
-		}
+		// if is first point of the route, zoom in
+		if(this._snakingLayersDone == 1 && this._followCheckpoints)
+			currentLayer._map.panTo(currentLayer._latlng, { animate: true })
 
-		if(this._openLatLngPopup) {
-			currentLayer.openPopup();
-		}
+		currentLayerIsPath = currentLayer._path
 
+		if(!currentLayerIsPath){
+
+			if(this._openLatLngTooltip) {
+				currentLayer.openTooltip();
+			}
+
+			if(this._openLatLngPopup) {
+				currentLayer.openPopup();
+			}
+			defaultZoom = 9
+			if(this._followCheckpoints) {
+				currentLayer._map.setView(currentLayer._latlng, this._zoom, { animate: true })
+			}
+		}
 		if ('snakeIn' in currentLayer) {
 			currentLayer.once('snakeend', function(){
 				setTimeout(this._snakeNext.bind(this), this.options.snakingPause);
